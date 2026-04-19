@@ -29,9 +29,11 @@ services:
       # Bind to all interfaces so Tailscale / LAN can reach it.
       - "${APP_HOST:-0.0.0.0}:${APP_PORT:-8080}:8080"
     volumes:
-      # Bind-mount app code in dev so uvicorn --reload picks up changes.
-      # Harmless in prod (same files as image).
+      # Bind-mount source + migrations so auto-update can ship new code AND
+      # new migrations with just a container restart (no image rebuild).
       - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini:ro
 
 volumes:
   db_data:
