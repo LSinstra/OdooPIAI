@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Register · OdooPIAI{% endblock %}
+{% block content %}
+<div class="max-w-sm mx-auto bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+  <h1 class="text-lg font-semibold mb-4">Create account</h1>
+  {% if error %}<div class="mb-3 text-sm text-red-600">{{ error }}</div>{% endif %}
+  <form method="post" action="/register" class="space-y-3">
+    <input name="name" type="text" placeholder="Your name"
+           class="w-full rounded border-slate-300" />
+    <input name="email" type="email" required placeholder="you@example.com"
+           class="w-full rounded border-slate-300" />
+    <input name="password" type="password" required placeholder="password (8+ chars)" minlength="8"
+           class="w-full rounded border-slate-300" />
+    <button class="w-full rounded bg-slate-900 text-white py-2 hover:bg-slate-800">Create account</button>
+  </form>
+  <p class="mt-4 text-sm text-slate-500">
+    Already have one? <a class="text-slate-900 underline" href="/login">Sign in</a>
+  </p>
+</div>
+{% endblock %}

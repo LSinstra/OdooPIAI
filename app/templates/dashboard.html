@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · OdooPIAI{% endblock %}
+{% block content %}
+<section class="mb-6 flex items-center justify-between">
+  <div>
+    <h1 class="text-xl font-semibold">Welcome{% if user.name %}, {{ user.name }}{% endif %}.</h1>
+    <p class="text-sm text-slate-500">
+      Connected to <span class="font-medium text-slate-700">{{ connection.label }}</span>
+      ({{ connection.url }})
+    </p>
+  </div>
+  <a href="/settings" class="text-sm text-slate-500 hover:text-slate-900">Manage connections →</a>
+</section>
+
+{% if odoo_err %}
+<div class="mb-4 bg-red-50 border border-red-200 text-red-800 text-sm rounded p-3">
+  <b>Can't reach Odoo:</b> {{ odoo_err }}
+</div>
+{% endif %}
+
+<div class="grid md:grid-cols-3 gap-4">
+  <section class="md:col-span-2">
+    <h2 class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">Projects</h2>
+    <div class="bg-white rounded-lg border border-slate-200 divide-y">
+      {% for p in projects %}
+      <div class="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
+        <div>
+          <a href="/projects/{{ p.id }}" class="font-medium text-slate-900 hover:underline">{{ p.name }}</a>
+          {% if p.partner_id %}
+            <div class="text-xs text-slate-500">{{ p.partner_id[1] }}</div>
+          {% endif %}
+        </div>
+        <div class="flex gap-2">
+          <a href="/projects/{{ p.id }}" class="text-xs px-2 py-1 rounded border hover:bg-slate-100">View</a>
+          <a href="/planner/{{ p.id }}" class="text-xs px-2 py-1 rounded bg-slate-900 text-white hover:bg-slate-800">Plan with AI</a>
+        </div>
+      </div>
+      {% else %}
+      <div class="px-4 py-6 text-sm text-slate-500">No projects visible to this Odoo user.</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <aside>
+    <h2 class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">Recent insights</h2>
+    <div class="space-y-2">
+      {% for ins in insights %}
+      <div class="bg-white rounded-lg border border-slate-200 p-3">
+        <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
+          <span class="font-medium">{{ ins.kind }}</span>
+          <span>{{ ins.created_at.strftime('%b %d %H:%M') }}</span>
+        </div>
+        <div class="text-sm font-medium text-slate-900">{{ ins.title }}</div>
+      </div>
+      {% else %}
+      <div class="text-sm text-slate-500">No insights yet. Jobs run on schedule.</div>
+      {% endfor %}
+    </div>
+  </aside>
+</div>
+{% endblock %}

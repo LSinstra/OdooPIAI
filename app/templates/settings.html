@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Settings · OdooPIAI{% endblock %}
+{% block content %}
+<h1 class="text-xl font-semibold mb-4">Settings</h1>
+
+{% if status %}
+<div class="mb-4 rounded p-3 text-sm
+            {% if status.ok %}bg-emerald-50 text-emerald-800 border border-emerald-200
+            {% else %}bg-red-50 text-red-800 border border-red-200{% endif %}">
+  {{ status.msg }}
+</div>
+{% endif %}
+
+<section class="mb-8">
+  <h2 class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">Odoo connections</h2>
+  <div class="bg-white rounded-lg border border-slate-200 divide-y">
+    {% for c in connections %}
+    <div class="px-4 py-3 flex items-center justify-between text-sm">
+      <div>
+        <div class="font-medium">
+          {{ c.label }}
+          {% if c.is_default %}<span class="ml-2 text-xs bg-slate-900 text-white rounded px-1.5 py-0.5">default</span>{% endif %}
+        </div>
+        <div class="text-xs text-slate-500">{{ c.url }} · {{ c.db_name }} · {{ c.username }}</div>
+      </div>
+      <div class="flex gap-2">
+        {% if not c.is_default %}
+        <form method="post" action="/settings/odoo/{{ c.id }}/default">
+          <button class="text-xs px-2 py-1 rounded border hover:bg-slate-100">make default</button>
+        </form>
+        {% endif %}
+        <form method="post" action="/settings/odoo/{{ c.id }}/delete"
+              onsubmit="return confirm('Delete this connection?')">
+          <button class="text-xs px-2 py-1 rounded border hover:bg-red-50 text-red-700">delete</button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="px-4 py-6 text-sm text-slate-500">No connections yet. Add one below.</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="bg-white rounded-lg border border-slate-200 p-4">
+  <h2 class="font-medium mb-3">Add an Odoo 17 connection</h2>
+  <form method="post" action="/settings/odoo" class="grid md:grid-cols-2 gap-3 text-sm">
+    <label>Label
+      <input name="label" required class="w-full rounded border-slate-300" placeholder="Prod / Staging" />
+    </label>
+    <label>URL
+      <input name="url" required class="w-full rounded border-slate-300" placeholder="https://mycompany.odoo.com" />
+    </label>
+    <label>Database
+      <input name="db_name" required class="w-full rounded border-slate-300" placeholder="mycompany" />
+    </label>
+    <label>Username
+      <input name="username" required class="w-full rounded border-slate-300" placeholder="you@example.com" />
+    </label>
+    <label class="md:col-span-2">API key
+      <input name="api_key" required type="password" class="w-full rounded border-slate-300"
+             placeholder="Developer → API Keys in Odoo user preferences" />
+    </label>
+    <label class="md:col-span-2 flex items-center gap-2">
+      <input name="is_default" type="checkbox" value="true" checked /> Use as default
+    </label>
+    <div class="md:col-span-2 flex justify-end">
+      <button class="px-3 py-2 rounded bg-slate-900 text-white hover:bg-slate-800">
+        Test &amp; save
+      </button>
+    </div>
+  </form>
+  <p class="mt-3 text-xs text-slate-500">
+    The API key is encrypted with a Fernet key before being stored. See
+    <code>docs/ODOO_SETUP.md</code>.
+  </p>
+</section>
+{% endblock %}

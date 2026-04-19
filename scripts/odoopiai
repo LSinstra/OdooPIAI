@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# OdooPIAI CLI helper — installed to /usr/local/bin/odoopiai by install.sh.
+set -euo pipefail
+
+INSTALL_DIR="${ODOOPIAI_DIR:-/opt/odoopiai}"
+cd "$INSTALL_DIR"
+
+usage() {
+  cat <<EOF
+odoopiai — manage the local OdooPIAI stack
+
+Usage:
+  odoopiai status           Show container + service status
+  odoopiai logs [service]   Tail container logs (default: api)
+  odoopiai update           Force a pull + rebuild now (don't wait for timer)
+  odoopiai restart          Restart containers
+  odoopiai stop             Stop containers
+  odoopiai start            Start containers
+  odoopiai shell            Open a shell inside the api container
+  odoopiai env              Print resolved .env (secrets masked)
+  odoopiai url              Print the Tailscale + LAN URLs
+  odoopiai pause-updates    Disable the auto-update timer (for debugging)
+  odoopiai resume-updates   Re-enable the auto-update timer
+  odoopiai uninstall        Remove systemd units (keeps data)
+EOF
+}
+
+cmd="${1:-status}"; shift || true
+
+case "$cmd" in
+  status)
+    systemctl is-active odoopiai.service || true
+    systemctl is-active odoopiai-updater.timer || true
+    docker compose ps
+    ;;
+  logs)
+    svc="${1:-api}"
+    docker compose logs -f --tail=200 "$svc"
+    ;;
+  update)
+    sudo systemctl start odoopiai-updater.service
+    sudo journalctl -u odoopiai-updater.service -n 50 --no-pager
+    ;;
+  restart) docker compose restart ;;
+  stop)    docker compose stop ;;
+  start)   docker compose up -d ;;
+  shell)   docker compose exec api bash ;;
+  env)
+    # Print .env with values > 8 chars masked.
+    awk -F= '/^[A-Z]/ { if (length($2) > 8) printf "%s=%s...\n", $1, substr($2,1,4); else print }' .env
+    ;;
+  url)
+    port="$(grep -E '^APP_PORT=' .env | cut -d= -f2 || echo 8080)"
+    lan="$(hostname -I | awk '{print $1}')"
+    ts="$(tailscale ip -4 2>/dev/null | head -n1 || true)"
+    echo "LAN:       http://${lan}:${port}"
+    [[ -n "$ts" ]] && echo "Tailscale: http://${ts}:${port}"
+    ;;
+  pause-updates)  sudo systemctl stop odoopiai-updater.timer ;;
+  resume-updates) sudo systemctl start odoopiai-updater.timer ;;
+  uninstall)
+    sudo systemctl disable --now odoopiai.service odoopiai-updater.timer || true
+    sudo rm -f /etc/systemd/system/odoopiai*.service /etc/systemd/system/odoopiai-updater.timer
+    sudo systemctl daemon-reload
+    echo "Services removed. Data in $INSTALL_DIR/data and the db volume are preserved."
+    ;;
+  -h|--help|help) usage ;;
+  *) usage; exit 1 ;;
+esac

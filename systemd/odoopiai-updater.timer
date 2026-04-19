@@ -1,0 +1,11 @@
+[Unit]
+Description=Run OdooPIAI auto-updater every 30s
+
+[Timer]
+OnBootSec=60s
+OnUnitInactiveSec=30s
+AccuracySec=5s
+Unit=odoopiai-updater.service
+
+[Install]
+WantedBy=timers.target

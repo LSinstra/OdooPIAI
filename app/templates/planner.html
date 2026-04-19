@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Plan · {{ pack.project.name if pack.project else project_id }}{% endblock %}
+{% block content %}
+<section class="mb-4">
+  <a href="/projects/{{ project_id }}" class="text-xs text-slate-500 hover:text-slate-900">← Back to project</a>
+  <h1 class="text-xl font-semibold mt-1">
+    Plan with AI — {{ pack.project.name if pack.project else 'project #' ~ project_id }}
+  </h1>
+</section>
+
+<div x-data="{
+       brief: '',
+       target: '',
+       plan: null,
+       loading: false,
+       applying: false,
+       applied: null,
+       async run() {
+         this.loading = true; this.plan = null;
+         const r = await fetch('/planner/plan', {
+           method:'POST',
+           headers:{'Content-Type':'application/json'},
+           body: JSON.stringify({project_id: {{ project_id }}, brief: this.brief, target_date: this.target || null})
+         });
+         this.plan = r.ok ? await r.json() : {error: await r.text()};
+         this.loading = false;
+       },
+       async apply() {
+         if (!this.plan || !this.plan.tasks) return;
+         this.applying = true;
+         const r = await fetch('/planner/apply', {
+           method:'POST',
+           headers:{'Content-Type':'application/json'},
+           body: JSON.stringify({project_id: {{ project_id }}, tasks: this.plan.tasks})
+         });
+         this.applied = r.ok ? await r.json() : {error: await r.text()};
+         this.applying = false;
+       }
+     }">
+
+  <div class="bg-white rounded-lg border border-slate-200 p-4 mb-6">
+    <label class="text-sm block mb-2">
+      <span class="block text-slate-500 text-xs mb-1">Brief</span>
+      <textarea x-model="brief" rows="4" class="w-full rounded border-slate-300 text-sm"
+                placeholder="Describe the outcome. e.g. Launch the v2 mobile onboarding in 3 weeks with analytics hooks."></textarea>
+    </label>
+    <label class="text-sm block mb-3">
+      <span class="block text-slate-500 text-xs mb-1">Target date (optional)</span>
+      <input type="date" x-model="target" class="rounded border-slate-300 text-sm" />
+    </label>
+    <button @click="run()" :disabled="loading || !brief"
+            class="px-3 py-2 text-sm rounded bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50">
+      <span x-show="!loading">Generate plan</span>
+      <span x-show="loading">Thinking…</span>
+    </button>
+  </div>
+
+  <template x-if="plan && plan.tasks">
+    <div class="bg-white rounded-lg border border-slate-200 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-medium">Proposed plan (<span x-text="plan.tasks.length"></span> tasks)</h2>
+        <button @click="apply()" :disabled="applying"
+                class="text-sm px-3 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50">
+          <span x-show="!applying">Apply to Odoo</span>
+          <span x-show="applying">Creating…</span>
+        </button>
+      </div>
+
+      <template x-if="plan.rationale">
+        <p class="text-sm text-slate-600 mb-3" x-text="plan.rationale"></p>
+      </template>
+
+      <table class="w-full text-sm">
+        <thead class="text-left text-xs text-slate-500 uppercase">
+          <tr>
+            <th class="pb-2">Task</th>
+            <th class="pb-2">Stage</th>
+            <th class="pb-2">Hrs</th>
+            <th class="pb-2">Depends on</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="t in plan.tasks" :key="t.name">
+            <tr class="border-t">
+              <td class="py-2 pr-3 align-top">
+                <div class="font-medium" x-text="t.name"></div>
+                <div class="text-xs text-slate-500" x-text="t.description"></div>
+              </td>
+              <td class="py-2 pr-3 align-top" x-text="t.stage"></td>
+              <td class="py-2 pr-3 align-top" x-text="t.estimated_hours"></td>
+              <td class="py-2 pr-3 align-top text-xs text-slate-500"
+                  x-text="(t.depends_on || []).join(', ')"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+
+      <template x-if="plan.risks && plan.risks.length">
+        <div class="mt-4">
+          <div class="text-xs uppercase text-slate-500 mb-1">Risks Claude flagged</div>
+          <ul class="list-disc ml-5 text-sm">
+            <template x-for="r in plan.risks"><li x-text="r"></li></template>
+          </ul>
+        </div>
+      </template>
+    </div>
+  </template>
+
+  <template x-if="applied">
+    <div class="mt-4 p-3 rounded bg-emerald-50 border border-emerald-200 text-sm">
+      <span x-show="applied.count">Created <b x-text="applied.count"></b> tasks in Odoo.</span>
+      <span x-show="applied.error" x-text="applied.error"></span>
+    </div>
+  </template>
+
+  <template x-if="plan && plan.error">
+    <div class="mt-4 p-3 rounded bg-red-50 border border-red-200 text-sm" x-text="plan.error"></div>
+  </template>
+</div>
+{% endblock %}

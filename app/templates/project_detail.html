@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} · OdooPIAI{% endblock %}
+{% block content %}
+<section class="mb-6 flex items-center justify-between">
+  <div>
+    <a href="/" class="text-xs text-slate-500 hover:text-slate-900">← Projects</a>
+    <h1 class="text-xl font-semibold mt-1">{{ project.name }}</h1>
+    <p class="text-sm text-slate-500">
+      {% if project.partner_id %}{{ project.partner_id[1] }} · {% endif %}
+      {{ tasks|length }} tasks
+    </p>
+  </div>
+  <div class="flex gap-2">
+    <a href="/planner/{{ project.id }}" class="text-sm px-3 py-2 rounded bg-slate-900 text-white hover:bg-slate-800">
+      Plan with AI
+    </a>
+  </div>
+</section>
+
+<div x-data="{ tone: 'exec', highlights: '', draft: null, loading: false,
+               async draftUpdate() {
+                 this.loading = true; this.draft = null;
+                 const r = await fetch('/ai/stakeholder', {
+                   method: 'POST',
+                   headers: {'Content-Type': 'application/json'},
+                   body: JSON.stringify({project_id: {{ project.id }}, tone: this.tone, highlights: this.highlights})
+                 });
+                 this.draft = r.ok ? await r.json() : {subject: 'error', body_md: await r.text()};
+                 this.loading = false;
+               }
+             }" class="mb-8 bg-white rounded-lg border border-slate-200 p-4">
+  <h2 class="font-medium mb-3">Draft a stakeholder update</h2>
+  <div class="flex gap-3 items-end flex-wrap">
+    <label class="text-sm">
+      <span class="block text-slate-500 text-xs mb-1">Tone</span>
+      <select x-model="tone" class="rounded border-slate-300 text-sm">
+        <option value="exec">exec</option>
+        <option value="customer">customer</option>
+        <option value="internal">internal</option>
+      </select>
+    </label>
+    <label class="text-sm flex-1 min-w-[200px]">
+      <span class="block text-slate-500 text-xs mb-1">Highlights to include (optional)</span>
+      <input x-model="highlights" class="w-full rounded border-slate-300 text-sm"
+             placeholder="e.g. API launch slipped 3d, new AWS region added" />
+    </label>
+    <button @click="draftUpdate()" :disabled="loading"
+            class="px-3 py-2 text-sm rounded bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50">
+      <span x-show="!loading">Draft</span>
+      <span x-show="loading">Drafting…</span>
+    </button>
+  </div>
+  <template x-if="draft">
+    <div class="mt-4 border-t pt-3">
+      <div class="text-xs text-slate-500">Subject</div>
+      <div class="font-medium mb-2" x-text="draft.subject"></div>
+      <pre class="whitespace-pre-wrap text-sm bg-slate-50 p-3 rounded" x-text="draft.body_md"></pre>
+    </div>
+  </template>
+</div>
+
+<!-- Ask AI chat -->
+<div x-data="{
+       msg: '',
+       out: '',
+       post: false,
+       streaming: false,
+       send() {
+         this.out = ''; this.streaming = true;
+         fetch('/ai/chat/stream', {
+           method: 'POST',
+           headers: {'Content-Type': 'application/json'},
+           body: JSON.stringify({project_id: {{ project.id }}, message: this.msg, post_to_chatter: this.post})
+         }).then(async res => {
+           const reader = res.body.getReader();
+           const dec = new TextDecoder();
+           while (true) {
+             const {value, done} = await reader.read();
+             if (done) break;
+             const chunk = dec.decode(value);
+             chunk.split('\n').forEach(line => {
+               if (line.startsWith('data: ')) this.out += line.slice(6).replace(/\\n/g, '\n');
+             });
+           }
+           this.streaming = false;
+         });
+       }
+     }" class="mb-8 bg-white rounded-lg border border-slate-200 p-4">
+  <h2 class="font-medium mb-3">Ask AI about this project</h2>
+  <textarea x-model="msg" rows="3"
+            class="w-full rounded border-slate-300 text-sm"
+            placeholder="e.g. Which tasks are at risk for this week's sprint and why?"></textarea>
+  <div class="flex items-center justify-between mt-2">
+    <label class="text-xs text-slate-500 flex items-center gap-1">
+      <input type="checkbox" x-model="post" /> post answer to Odoo chatter
+    </label>
+    <button @click="send()" :disabled="streaming"
+            class="px-3 py-2 text-sm rounded bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50">
+      <span x-show="!streaming">Ask</span><span x-show="streaming">Thinking…</span>
+    </button>
+  </div>
+  <template x-if="out">
+    <pre class="whitespace-pre-wrap text-sm bg-slate-50 p-3 rounded mt-3" x-text="out"></pre>
+  </template>
+</div>
+
+<section class="mb-6">
+  <h2 class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">Tasks</h2>
+  <div class="bg-white rounded-lg border border-slate-200 divide-y">
+    {% for t in tasks %}
+    <div class="px-4 py-2 flex items-center justify-between text-sm">
+      <div>
+        <div class="font-medium">{{ t.name }}</div>
+        <div class="text-xs text-slate-500">
+          {% if t.stage_id %}{{ t.stage_id[1] }}{% endif %}
+          {% if t.date_deadline %} · due {{ t.date_deadline }}{% endif %}
+          {% if t.allocated_hours %} · {{ t.allocated_hours }}h{% endif %}
+        </div>
+      </div>
+      <button hx-post="/planner/breakdown"
+              hx-vals='{"task_id": {{ t.id }}, "extra_context": ""}'
+              hx-ext="json-enc"
+              hx-swap="none"
+              class="text-xs px-2 py-1 rounded border hover:bg-slate-100"
+              onclick="this.innerText='Working…'">Break down</button>
+    </div>
+    {% else %}
+    <div class="px-4 py-6 text-sm text-slate-500">No tasks yet.</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section>
+  <h2 class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">Insights for this project</h2>
+  {% for ins in insights %}
+  <article class="bg-white rounded-lg border border-slate-200 p-3 mb-2">
+    <div class="flex items-center justify-between">
+      <div>
+        <span class="text-xs px-2 py-0.5 rounded
+              {% if ins.severity == 'high' %}bg-red-100 text-red-800
+              {% elif ins.severity == 'warn' %}bg-yellow-100 text-yellow-800
+              {% else %}bg-slate-100 text-slate-600{% endif %}">
+          {{ ins.kind }} · {{ ins.severity }}
+        </span>
+        <span class="ml-2 text-sm font-medium">{{ ins.title }}</span>
+      </div>
+      <form hx-post="/insights/{{ ins.id }}/dismiss" hx-swap="delete" hx-target="closest article">
+        <button class="text-xs text-slate-400 hover:text-slate-900">dismiss</button>
+      </form>
+    </div>
+    <pre class="mt-2 whitespace-pre-wrap text-sm text-slate-700">{{ ins.body_md }}</pre>
+  </article>
+  {% else %}
+  <div class="text-sm text-slate-500">No insights yet for this project.</div>
+  {% endfor %}
+</section>
+{% endblock %}

@@ -1,0 +1,37 @@
+# OdooPIAI — runs on Raspberry Pi 5 (arm64) and any x86_64 host.
+# Bound to APP_HOST (default 0.0.0.0) so it's reachable over Tailscale.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    image: odoopiai:local
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Bind to all interfaces so Tailscale / LAN can reach it.
+      - "${APP_HOST:-0.0.0.0}:${APP_PORT:-8080}:8080"
+    volumes:
+      # Bind-mount app code in dev so uvicorn --reload picks up changes.
+      # Harmless in prod (same files as image).
+      - ./app:/app/app
+
+volumes:
+  db_data:

@@ -1,0 +1,12 @@
+[Unit]
+Description=OdooPIAI auto-updater — git pull + redeploy when branch advances
+After=odoopiai.service
+Requires=odoopiai.service
+
+[Service]
+Type=oneshot
+User=@SERVICE_USER@
+WorkingDirectory=@INSTALL_DIR@
+ExecStart=/usr/bin/bash @INSTALL_DIR@/scripts/auto-update.sh
+# Avoid piling up if a build is slow — only one instance at a time.
+# (systemd already enforces this for oneshot, documenting intent.)

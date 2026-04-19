@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}OdooPIAI{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="/static/css/app.css" />
+</head>
+<body class="h-full text-slate-800">
+  <nav class="bg-white border-b border-slate-200">
+    <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+      <a href="/" class="font-semibold tracking-tight text-slate-900">
+        OdooPIAI
+        <span class="text-slate-400 text-xs font-normal ml-2">Claude × Odoo 17</span>
+      </a>
+      <div class="flex items-center gap-4 text-sm">
+        {% if user %}
+          <a href="/" class="hover:text-slate-900">Dashboard</a>
+          <a href="/settings" class="hover:text-slate-900">Settings</a>
+          <form method="post" action="/logout" class="inline">
+            <button class="text-slate-500 hover:text-slate-900">Logout</button>
+          </form>
+        {% else %}
+          <a href="/login" class="hover:text-slate-900">Login</a>
+          <a href="/register" class="hover:text-slate-900">Register</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="max-w-6xl mx-auto px-4 py-10 text-xs text-slate-400">
+    OdooPIAI · running on Raspberry Pi · auto-updating from {{ update_branch or 'your branch' }}
+  </footer>
+</body>
+</html>
