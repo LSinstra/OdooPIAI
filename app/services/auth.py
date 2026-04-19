@@ -1,21 +1,25 @@
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 from jose import jwt
-from passlib.context import CryptContext
 
 from ..config import get_settings
 
-_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _ALG = "HS256"
 _TOKEN_TTL = timedelta(days=30)
+_BCRYPT_MAX = 72  # bcrypt hard limit; we truncate silently (min-length is enforced upstream).
 
 
 def hash_password(password: str) -> str:
-    return _pwd.hash(password)
+    pw = password.encode("utf-8")[:_BCRYPT_MAX]
+    return bcrypt.hashpw(pw, bcrypt.gensalt()).decode()
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    return _pwd.verify(password, hashed)
+    try:
+        return bcrypt.checkpw(password.encode("utf-8")[:_BCRYPT_MAX], hashed.encode())
+    except ValueError:
+        return False
 
 
 def make_token(user_id: int) -> str:
