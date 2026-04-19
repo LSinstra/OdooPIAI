@@ -34,8 +34,17 @@ case "$cmd" in
     docker compose ps
     ;;
   logs)
-    svc="${1:-api}"
-    docker compose logs -f --tail=200 "$svc"
+    # Default: one-shot snapshot of the last 200 lines (pipeable to tail/grep).
+    # Pass -f to follow: `odoopiai logs -f` or `odoopiai logs -f api`.
+    follow=""
+    svc="api"
+    for arg in "$@"; do
+      case "$arg" in
+        -f|--follow) follow="-f" ;;
+        *) svc="$arg" ;;
+      esac
+    done
+    docker compose logs $follow --tail=200 "$svc"
     ;;
   update)
     sudo systemctl start odoopiai-updater.service
