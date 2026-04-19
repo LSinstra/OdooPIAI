@@ -57,7 +57,6 @@ def build_project_pack(c: OdooCreds, project_id: int) -> dict[str, Any]:
                 "description": _clean(t.get("description")),
                 "stage": stage_name,
                 "priority": t.get("priority"),
-                "kanban_state": t.get("kanban_state"),
                 "state": t.get("state"),
                 "deadline": t.get("date_deadline") or None,
                 "overdue_days": overdue_days,
