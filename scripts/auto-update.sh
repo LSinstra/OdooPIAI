@@ -42,8 +42,11 @@ if echo "$CHANGED" | grep -Eq '^(Dockerfile|requirements\.txt|docker-compose\.ym
   docker compose build
   docker compose up -d
 else
+  # App-only change. The app/ dir is bind-mounted, but uvicorn runs without
+  # --reload, so we MUST restart the api container to pick up new routes.
+  # `up -d` is a no-op when the service config hasn't changed — use restart.
   log "app code changed — restarting api container (no rebuild)"
-  docker compose up -d --no-deps api
+  docker compose restart api
 fi
 
 log "update complete"
