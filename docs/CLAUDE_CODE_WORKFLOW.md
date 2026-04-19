@@ -10,8 +10,8 @@ Claude Code on laptop → git push → Pi pulls within 30s → live
 
 ```bash
 # on your laptop
-git clone git@github.com:LSinstra/OdooPIAI.git
-cd OdooPIAI
+git clone git@github.com:lsinstra/odoopiai.git
+cd odoopiai
 git checkout claude/odoo-ai-raspberry-pi-8I4Aa
 claude-code
 ```

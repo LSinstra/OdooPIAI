@@ -28,7 +28,7 @@ The installer will print your Pi's Tailscale IP at the end.
 From a clean shell:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/LSinstra/OdooPIAI/claude/odoo-ai-raspberry-pi-8I4Aa/install.sh \
+curl -fsSL https://raw.githubusercontent.com/lsinstra/odoopiai/claude/odoo-ai-raspberry-pi-8I4Aa/install.sh \
   | sudo bash
 ```
 

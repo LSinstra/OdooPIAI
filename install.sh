@@ -19,7 +19,7 @@
 # =====================================================================
 set -euo pipefail
 
-REPO_URL_DEFAULT="https://github.com/LSinstra/OdooPIAI.git"
+REPO_URL_DEFAULT="https://github.com/lsinstra/odoopiai.git"
 INSTALL_DIR="${ODOOPIAI_DIR:-/opt/odoopiai}"
 BRANCH_DEFAULT="${ODOOPIAI_BRANCH:-claude/odoo-ai-raspberry-pi-8I4Aa}"
 SERVICE_USER="${ODOOPIAI_USER:-$SUDO_USER}"

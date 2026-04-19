@@ -22,7 +22,7 @@ Claude-powered Odoo 17 project-management copilot, purpose-built to run on a
 
 ```bash
 # On the Pi, as a user with sudo:
-curl -fsSL https://raw.githubusercontent.com/LSinstra/OdooPIAI/claude/odoo-ai-raspberry-pi-8I4Aa/install.sh \
+curl -fsSL https://raw.githubusercontent.com/lsinstra/odoopiai/claude/odoo-ai-raspberry-pi-8I4Aa/install.sh \
   | sudo bash
 ```
 
