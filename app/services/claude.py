@@ -17,13 +17,35 @@ from anthropic import Anthropic
 
 from ..config import get_settings
 from ..database import SessionLocal
-from ..models import CostLog
+from ..models import AppSetting, CostLog
+from .crypto import decrypt
 from .prompts import SYSTEM_BY_FEATURE
 
 logger = logging.getLogger(__name__)
 
 _settings = get_settings()
-_client = Anthropic(api_key=_settings.ANTHROPIC_API_KEY)
+
+
+def _api_key() -> str:
+    """Prefer DB-stored key (set via Settings UI), fall back to env."""
+    with SessionLocal() as db:
+        row = db.get(AppSetting, 1)
+        if row and row.anthropic_api_key_ct:
+            try:
+                return decrypt(row.anthropic_api_key_ct)
+            except Exception:
+                logger.warning("stored anthropic key failed to decrypt — falling back to env")
+    return _settings.ANTHROPIC_API_KEY
+
+
+def _get_client() -> Anthropic:
+    key = _api_key()
+    if not key or key == "sk-ant-REPLACE_ME":
+        raise RuntimeError(
+            "No Anthropic API key configured. Set one in Settings → Claude API key, "
+            "or edit ANTHROPIC_API_KEY in /opt/odoopiai/.env."
+        )
+    return Anthropic(api_key=key)
 
 
 def _log_cost(
@@ -68,9 +90,14 @@ def _text_from(message) -> str:
 
 
 def _model_for(feature: str) -> str:
-    # Digests are cheap and small — use Haiku. Everything else uses Opus.
+    # Digests are cheap and small — use Haiku. Everything else uses the
+    # configured model (DB override if set, else env default).
     if feature == "digest":
         return _settings.CLAUDE_FAST_MODEL
+    with SessionLocal() as db:
+        row = db.get(AppSetting, 1)
+        if row and row.anthropic_model:
+            return row.anthropic_model
     return _settings.CLAUDE_MODEL
 
 
@@ -113,7 +140,7 @@ def call(
         }
     ]
 
-    message = _client.messages.create(
+    message = _get_client().messages.create(
         model=model,
         max_tokens=max_tokens,
         system=system_blocks,
@@ -194,9 +221,11 @@ def stream(
         {"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}
     ]
 
+    client = _get_client()
+
     async def _gen():
         usage: dict[str, int] = {}
-        with _client.messages.stream(
+        with client.messages.stream(
             model=model,
             max_tokens=max_tokens,
             system=system_blocks,

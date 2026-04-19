@@ -5,12 +5,28 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import current_user
-from ..models import OdooConnection, User
-from ..services.crypto import encrypt
-from ..services.odoo import OdooCreds, test_connection
+from ..models import AppSetting, OdooConnection, User
+from ..services.crypto import decrypt, encrypt
+from ..services.odoo import OdooCreds, normalize_url, test_connection
 
 router = APIRouter(tags=["settings"])
 templates = Jinja2Templates(directory="app/templates")
+
+
+def _app_setting(db: Session) -> AppSetting:
+    row = db.get(AppSetting, 1)
+    if not row:
+        row = AppSetting(id=1)
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+    return row
+
+
+def _mask(key: str | None) -> str:
+    if not key:
+        return ""
+    return f"{key[:7]}…{key[-4:]}" if len(key) > 12 else "set"
 
 
 @router.get("/settings", response_class=HTMLResponse)
@@ -20,9 +36,53 @@ def settings_page(
     db: Session = Depends(get_db),
 ):
     conns = db.query(OdooConnection).filter_by(user_id=user.id).order_by(OdooConnection.id).all()
+    app_s = _app_setting(db)
+    key_masked = ""
+    if app_s.anthropic_api_key_ct:
+        try:
+            key_masked = _mask(decrypt(app_s.anthropic_api_key_ct))
+        except Exception:
+            key_masked = "(decryption failed)"
+
     return templates.TemplateResponse(
-        request, "settings.html", {"user": user, "connections": conns, "status": None}
+        request,
+        "settings.html",
+        {
+            "user": user,
+            "connections": conns,
+            "status": None,
+            "anthropic_key_masked": key_masked,
+            "anthropic_model": app_s.anthropic_model or "",
+        },
     )
+
+
+@router.post("/settings/anthropic")
+def save_anthropic(
+    anthropic_api_key: str = Form(""),
+    anthropic_model: str = Form(""),
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    row = _app_setting(db)
+    key = anthropic_api_key.strip()
+    if key:
+        # Only overwrite when a new key was typed — blank keeps the existing.
+        row.anthropic_api_key_ct = encrypt(key)
+    row.anthropic_model = anthropic_model.strip() or None
+    db.commit()
+    return RedirectResponse("/settings", status_code=303)
+
+
+@router.post("/settings/anthropic/clear")
+def clear_anthropic(
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    row = _app_setting(db)
+    row.anthropic_api_key_ct = None
+    db.commit()
+    return RedirectResponse("/settings", status_code=303)
 
 
 @router.post("/settings/odoo")
@@ -37,7 +97,7 @@ def save_connection(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
-    probe = OdooCreds(url=url.rstrip("/"), db=db_name, username=username, api_key=api_key)
+    probe = OdooCreds(url=normalize_url(url), db=db_name, username=username, api_key=api_key)
     try:
         result = test_connection(probe)
         if not result["ok"]:
@@ -61,7 +121,7 @@ def save_connection(
     conn = OdooConnection(
         user_id=user.id,
         label=label,
-        url=url.rstrip("/"),
+        url=normalize_url(url),
         db_name=db_name,
         username=username,
         api_key_ct=encrypt(api_key),

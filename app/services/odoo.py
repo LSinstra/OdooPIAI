@@ -24,9 +24,22 @@ class OdooCreds:
     api_key: str
 
 
+def normalize_url(url: str) -> str:
+    """Add https:// if the user omitted the scheme, and strip trailing slashes.
+
+    xmlrpc.client.ServerProxy raises 'unsupported XML-RPC protocol' otherwise.
+    """
+    u = (url or "").strip().rstrip("/")
+    if not u:
+        return u
+    if not u.startswith(("http://", "https://")):
+        u = "https://" + u
+    return u
+
+
 def creds_from(conn: OdooConnection) -> OdooCreds:
     return OdooCreds(
-        url=conn.url.rstrip("/"),
+        url=normalize_url(conn.url),
         db=conn.db_name,
         username=conn.username,
         api_key=decrypt(conn.api_key_ct),

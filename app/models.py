@@ -70,6 +70,23 @@ class Insight(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class AppSetting(Base):
+    """Singleton (id=1) — global app-level settings overridable from the UI.
+
+    We store the Anthropic API key here (encrypted) so users can rotate it
+    without touching .env on the Pi.
+    """
+
+    __tablename__ = "app_settings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    anthropic_api_key_ct: Mapped[str | None] = mapped_column(Text, nullable=True)
+    anthropic_model: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+
 class CostLog(Base):
     """One row per Claude API call — enough to audit spend and cache effectiveness."""
 
