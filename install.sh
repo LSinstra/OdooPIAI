@@ -13,7 +13,7 @@
 #   6. Installs the `odoopiai` CLI helper to /usr/local/bin
 #
 # Run on a fresh Pi (arm64, Raspberry Pi OS or Ubuntu):
-#   curl -fsSL https://raw.githubusercontent.com/LSinstra/OdooPIAI/<branch>/install.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/lsinstra/odoopiai/claude/odoo-ai-raspberry-pi-8I4Aa/install.sh | sudo bash
 # or, after cloning manually:
 #   sudo bash install.sh
 # =====================================================================
